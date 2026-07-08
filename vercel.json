@@ -1,6 +1,6 @@
 {
   "framework": "sveltekit",
   "rewrites": [
-    { "source": "/api/:path*", "destination": "http://170.9.34.226:8090/api/:path*" }
+    { "source": "/api/(.*)", "destination": "http://170.9.34.226:8090/api/$1" }
   ]
 }
