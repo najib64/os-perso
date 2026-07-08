@@ -1,3 +1,3 @@
 import PocketBase from 'pocketbase';
-const pb = new PocketBase('http://170.9.34.226:8090');
+const pb = new PocketBase('https://170.9.34.226');
 export default pb;
