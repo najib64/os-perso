@@ -90,3 +90,11 @@ export async function updateObjective(id: string, data: { current?: number; done
 export async function deleteObjective(id: string) {
   return await pb.collection('deed_objectives').delete(id);
 }
+export async function toggleMemorized(surahId: string, memorized: boolean, today: string) {
+  const existing = await pb.collection('memorization').getFullList({ filter: `surah = "${surahId}"` });
+  if (existing.length > 0) {
+    return await pb.collection('memorization').update(existing[0].id, { memorized, last_reviewed: today });
+  } else {
+    return await pb.collection('memorization').create({ surah: surahId, memorized, last_reviewed: today });
+  }
+}

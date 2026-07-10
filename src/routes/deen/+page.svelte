@@ -42,26 +42,31 @@
       loadObjectives(),
     ]);
   }
+  async function handleToggleMemorized(surah: Surah, memo: Memorization | undefined) {
+  const newVal = !memo?.memorized;
+  await toggleMemorized(surah.id, newVal, today);
+  memorization = await loadMemorization();
+}
 
-  let globalPercent = $derived(
-    (() => {
-      const total = surahs.reduce((s, su) => s + (su.pages || 0), 0);
-      const memo = memorization.reduce((s, m) => s + (m.pages_memorized || 0), 0);
-      return total > 0 ? Math.round((memo / total) * 1000) / 10 : 0;
-    })()
-  );
+let globalPercent = $derived(
+  (() => {
+    const totalPages = surahs.reduce((s, su) => s + (su.pages || 0), 0);
+    const memoPages = memorization
+      .filter(m => m.memorized)
+      .reduce((s, m) => {
+        const surah = surahs.find(su => su.id === m.surah);
+        return s + (surah?.pages || 0);
+      }, 0);
+    return totalPages > 0 ? Math.round((memoPages / totalPages) * 1000) / 10 : 0;
+  })()
+);
 
-  let activeTopics = $derived(topics.filter(t => t.active));
-
-  let reviewQueue = $derived(
-    memorization
-      .filter(m => {
-        if (!m.last_reviewed) return true;
-        return (Date.now() - new Date(m.last_reviewed).getTime()) / 86400000 > 30;
-      })
-      .sort((a, b) => (a.last_reviewed || '').localeCompare(b.last_reviewed || ''))
-      .slice(0, 5)
-  );
+let reviewQueue = $derived(
+  memorization
+    .filter(m => m.memorized && m.last_reviewed && (Date.now() - new Date(m.last_reviewed).getTime()) / 86400000 > 30)
+    .sort((a, b) => (a.last_reviewed || '').localeCompare(b.last_reviewed || ''))
+    .slice(0, 5)
+);
 
   // Prières
   function getPrayerValue(date: string, field: string): string {
@@ -248,60 +253,55 @@
       </div>
     </div>
 
-  <!-- ═══ CORAN ═══ -->
-  {:else if activeTab === 'quran'}
-    <div style="background: linear-gradient(135deg, #141414 0%, #1A1A1A 100%); border: 1px solid #262626; border-radius: 16px; padding: 24px; margin-bottom: 20px; text-align: center;">
-      <p style="color: #8C8C8C; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px;">Coran mémorisé</p>
-      <svg width="140" height="140" viewBox="0 0 140 140">
-        <circle cx="70" cy="70" r="60" fill="none" stroke="#262626" stroke-width="8" />
-        <circle cx="70" cy="70" r="60" fill="none" stroke="#22C55E" stroke-width="8"
-          stroke-dasharray={`${(globalPercent / 100) * 377} 377`}
-          stroke-linecap="round" transform="rotate(-90 70 70)" />
-      </svg>
-      <div style="position: relative; margin-top: -110px; margin-bottom: 80px;">
-        <span style="font-size: 36px; font-weight: 500; color: #F5F5F5;">{globalPercent}%</span>
-      </div>
+<!-- ═══ CORAN ═══ -->
+{:else if activeTab === 'quran'}
+  <div style="background: linear-gradient(135deg, #141414 0%, #1A1A1A 100%); border: 1px solid #262626; border-radius: 16px; padding: 24px; margin-bottom: 20px; text-align: center;">
+    <p style="color: #8C8C8C; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px;">Coran mémorisé</p>
+    <svg width="140" height="140" viewBox="0 0 140 140">
+      <circle cx="70" cy="70" r="60" fill="none" stroke="#262626" stroke-width="8" />
+      <circle cx="70" cy="70" r="60" fill="none" stroke="#22C55E" stroke-width="8"
+        stroke-dasharray={`${(globalPercent / 100) * 377} 377`}
+        stroke-linecap="round" transform="rotate(-90 70 70)" />
+    </svg>
+    <div style="position: relative; margin-top: -110px; margin-bottom: 80px;">
+      <span style="font-size: 36px; font-weight: 500; color: #F5F5F5;">{globalPercent}%</span>
     </div>
+  </div>
 
+  <!-- Kanban révision -->
+  {#if reviewQueue.length > 0}
     <div style="background: #141414; border: 1px solid #262626; border-radius: 10px; padding: 14px; margin-bottom: 16px;">
-      <select bind:value={currentSurah} style="width: 100%; background: #0D0D0D; border: 1px solid #262626; border-radius: 6px; padding: 8px; font-size: 13px; color: #F5F5F5; outline: none; margin-bottom: 8px; box-sizing: border-box;">
-        <option value={null}>-- Choisir une sourate --</option>
-        {#each surahs as s}
-          <option value={s}>{s.number}. {s.name} ({s.pages} p.)</option>
-        {/each}
-      </select>
-      <div style="display: flex; gap: 6px;">
-        <input type="number" placeholder="Pages mémorisées" bind:value={newPagesMemorized} step="0.5"
-          style="flex: 1; background: #0D0D0D; border: 1px solid #262626; border-radius: 6px; padding: 8px; font-size: 13px; color: #F5F5F5; outline: none;" />
-        <button onclick={handleAddMemorization} disabled={!currentSurah || !newPagesMemorized}
-          style="background: #3B82F6; color: white; border: none; border-radius: 6px; padding: 8px 14px; font-size: 13px; cursor: pointer;">Ajouter</button>
-      </div>
+      <p style="color: #EF4444; font-size: 12px; text-transform: uppercase; margin-bottom: 10px;">⚠️ À réviser (>{30} jours)</p>
+      {#each reviewQueue as r}
+        <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #262626;">
+          <span style="color: #F5F5F5; font-size: 13px;">{surahs.find(s => s.id === r.surah)?.name || 'Inconnue'}</span>
+          <span style="color: #EF4444; font-size: 11px;">{r.last_reviewed ? Math.floor((Date.now() - new Date(r.last_reviewed).getTime()) / 86400000) + 'j' : 'Jamais'}</span>
+        </div>
+      {/each}
     </div>
+  {/if}
 
-    {#if reviewQueue.length > 0}
-      <div style="background: #141414; border: 1px solid #262626; border-radius: 10px; padding: 14px; margin-bottom: 16px;">
-        <p style="color: #EF4444; font-size: 12px; text-transform: uppercase; margin-bottom: 10px;">⚠️ À réviser (>{30} jours)</p>
-        {#each reviewQueue as r}
-          <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #262626;">
-            <span style="color: #F5F5F5; font-size: 13px;">{surahs.find(s => s.id === r.surah)?.name || 'Inconnue'}</span>
-            <span style="color: #EF4444; font-size: 11px;">{r.last_reviewed ? Math.floor((Date.now() - new Date(r.last_reviewed).getTime()) / 86400000) + 'j' : 'Jamais'}</span>
-          </div>
-        {/each}
-      </div>
-    {/if}
-
-    {#if memorization.length > 0}
-      <div style="background: #141414; border: 1px solid #262626; border-radius: 10px; padding: 14px;">
-        <p style="color: #8C8C8C; font-size: 12px; margin-bottom: 10px;">Sourates mémorisées</p>
-        {#each memorization as m}
-          {@const s = surahs.find(su => su.id === m.surah)}
-          <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #262626;">
-            <span style="color: #F5F5F5; font-size: 12px;">{s?.number}. {s?.name}</span>
-            <span style="color: #8C8C8C; font-size: 11px;">{m.pages_memorized}/{s?.pages} p.</span>
-          </div>
-        {/each}
-      </div>
-    {/if}
+  <!-- Liste des sourates avec checkbox -->
+  <div style="background: #141414; border: 1px solid #262626; border-radius: 10px; padding: 14px;">
+    <p style="color: #8C8C8C; font-size: 12px; margin-bottom: 10px;">Sourates ({memorization.filter(m => m.memorized).length}/{surahs.length})</p>
+    <div style="max-height: 400px; overflow-y: auto;">
+      {#each surahs as s}
+        {@const memo = memorization.find(m => m.surah === s.id)}
+        <div style="display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid #262626;">
+          <button onclick={() => handleToggleMemorized(s, memo)}
+            style="width: 24px; height: 24px; border-radius: 4px; border: 2px solid {memo?.memorized ? '#22C55E' : '#262626'}; background: {memo?.memorized ? '#22C55E' : 'transparent'}; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center;">
+            {#if memo?.memorized}
+              <span style="color: #0D0D0D; font-size: 12px; font-weight: 700;">✓</span>
+            {/if}
+          </button>
+          <span style="color: {memo?.memorized ? '#22C55E' : '#8C8C8C'}; font-size: 12px; flex: 1;">
+            {s.number}. {s.name}
+          </span>
+          <span style="color: #595959; font-size: 10px;">{s.pages} p.</span>
+        </div>
+      {/each}
+    </div>
+  </div>
 
   <!-- ═══ THÉMATIQUES ═══ -->
   {:else if activeTab === 'topics'}
