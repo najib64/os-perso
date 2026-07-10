@@ -1,13 +1,13 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import {
-    loadPrayers, savePrayer,
-    loadSurahs, loadMemorization, addMemorization,
-    loadTopics, toggleTopic,
-    loadProphets, loadCompanions, setStatus,
-    loadObjectives, createObjective, updateObjective, deleteObjective,
-    type Surah, type Prayer, type Memorization, type Topic, type Prophet, type Companion, type Objective
-  } from '$lib/deenApi';
+import {
+  loadPrayers, savePrayer,
+  loadSurahs, loadMemorization, addMemorization, toggleMemorized,
+  loadTopics, toggleTopic,
+  loadProphets, loadCompanions, setStatus,
+  loadObjectives, createObjective, updateObjective, deleteObjective,
+  type Surah, type Prayer, type Memorization, type Topic, type Prophet, type Companion, type Objective
+} from '$lib/deenApi';
 
   let activeTab = $state('prayer');
   let today = new Date().toISOString().split('T')[0];

@@ -3,7 +3,7 @@ import pb from '$lib/pocketbase';
 // Types
 export interface Surah { id: string; number: number; name: string; pages: number; }
 export interface Prayer { id: string; date: string; fajr: string; dohr: string; asr: string; maghrib: string; isha: string; chaf: string; witr: string; fajr_wakeup: string; }
-export interface Memorization { id: string; surah: string; pages_memorized: number; last_reviewed: string; }
+export interface Memorization { id: string; surah: string; pages_memorized?: number; memorized?: boolean; last_reviewed: string; }
 export interface Topic { id: string; category: string; name: string; active: boolean; }
 export interface Prophet { id: string; name: string; status: string; }
 export interface Companion { id: string; name: string; status: string; }
